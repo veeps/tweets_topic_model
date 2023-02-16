@@ -164,7 +164,7 @@ server <- function(input, output, session) {
   # Google search -----------------------------------------------------
   
   google_this <- function(search_term) {
-    sprintf('<a href="https://www.google.com/?q=%s" target="_blank" class="btn btn-xs">google this</a>',search_term)
+    sprintf('<a href="https://www.google.com/search?q=%s" target="_blank" class="btn btn-xs">google this</a>',search_term)
   }
   
   # # add observe event for row click
