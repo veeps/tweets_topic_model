@@ -7,6 +7,7 @@ library(tidytext)
 library(textdata)
 library(lubridate)
 library(WikipediR)
+library(purrr)
 
 # Word formatting ----------------------------------------------------
 wrap_in <- function(.df, column, word, tag){
@@ -172,12 +173,17 @@ server <- function(input, output, session) {
   
   #output$word <- renderText({words()$word[input$top_words_rows_selected]})
   
+  # Wiki search -----------------------------------------------------------
+  wiki <- function(word){unlist(page_content("en", "wikipedia", page_name = word))}
+  wiki_no_error <- possibly(wiki, otherwise="No Wikipedia Page Exists")
+  
   
   # # add observe event for row click
   observeEvent(input$top_words_rows_selected, {
     word <- words()$tagged_text[input$top_words_rows_selected] 
+    
     showModal(modalDialog(
-      HTML(unlist(page_content("en", "wikipedia", page_name = word))),
+      HTML(wiki_no_error(word)),
             easyClose = TRUE))
   })
   
