@@ -135,20 +135,30 @@ server <- function(input, output, session) {
   
   
   #analyze most common words
+  # words <- reactive({
+  #   req(landmine_r())
+  #   landmine_r() %>%
+  #   unnest_tokens(word, tweet) %>%
+  #   filter(!word %in% custom_stopwords) %>%
+  #   anti_join(stop_words) %>%
+  #   count(word, sort = TRUE) %>%
+  #   head(5)
+  # })
+  
   words <- reactive({
     req(landmine_r())
-    landmine_r() %>%
-    unnest_tokens(word, tweet) %>%
-    filter(!word %in% custom_stopwords) %>%
-    anti_join(stop_words) %>%
-    count(word, sort = TRUE) %>%
-    head(5)
+    landmine_r() |>
+      group_by(tagged_text, ner_tag) |>
+      summarise(total = n()) |>
+      arrange(desc(total)) |>
+      head(5) |>
+      mutate(search_text = str_replace_all(tagged_text, " ", "+"))
   })
   
   output$top_words <- DT::renderDataTable({
     req(event_data("plotly_click"))
     datatable(
-      words() |> select (word) |> mutate(link = google_this(words()$word)),
+      words() |> mutate(link = google_this(search_text)) |> select(tagged_text, link),
       rownames = FALSE,
       escape = FALSE,
       selection = "single",
@@ -165,7 +175,7 @@ server <- function(input, output, session) {
   
   # # add observe event for row click
   observeEvent(input$top_words_rows_selected, {
-    word <- words()$word[input$top_words_rows_selected] 
+    word <- words()$tagged_text[input$top_words_rows_selected] 
     showModal(modalDialog(
       HTML(unlist(page_content("en", "wikipedia", page_name = word))),
             easyClose = TRUE))
