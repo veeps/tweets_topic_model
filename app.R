@@ -111,9 +111,9 @@ server <- function(input, output, session) {
   output$landmine_tweets <- DT::renderDataTable({
     DT::datatable(
       if(!is.null(event_data("plotly_click"))) {
-        landmine_r() |> select(handle, tweet)
+        landmine_r() |> select(handle, tweet) |> distinct()
       } else {
-        landmine |> select(date, handle, tweet)
+        landmine |> select(date, handle, tweet) |> distinct()
       },
       rownames=FALSE,
       options = list(info = FALSE),
