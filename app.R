@@ -7,12 +7,31 @@ library(tidytext)
 library(textdata)
 library(lubridate)
 
+# Word formatting ----------------------------------------------------
+wrap_in <- function(.df, column, word, tag){
+  class<-""
+  if(grepl("\\.", tag)) {
+    class <- sub(".+?\\.(.+)", " class='\\1'", tag)
+    tag <- sub("\\..+", "", tag)
+  }
+  .df[[column]] <-  gsub(sprintf("\\b(%s)\\b", paste0(word,collapse="|")), sprintf("<%1$s%2$s>\\1</%1$s>", tag, class), .df[[column]])
+  .df
+}
+
+
 # Read in data ------------------------------------------------
 
 landmine <- read_csv("landmine_tweets.csv") |>
   select(date, handle, tweet, query_term) |>
-  rename(topic = query_term) |>
-  htmlwidgets::prependContent(htmltools::tags$style("mark {font-weight: 700; background-color: yellow}"))
+  rename(topic = query_term) |> 
+  htmlwidgets::prependContent(htmltools::tags$style("mark {font-weight: 700; background-color: yellow}"))  |> wrap_in("tweet", "IED", "mark")
+
+
+#ner <- read_csv("landmine_tweets_ner_results_non_eng_clean.csv") |> bind_rows(read_csv("landmine_tweets_ner_results_eng_clean.csv"))
+
+#landmine <- left_join(ner, df, by = c("document_id", "sentence_text"))
+
+
 
 # read afinn words
 afinn <- readr::read_csv("./data/afinn.csv")
@@ -91,13 +110,11 @@ server <- function(input, output, session) {
       if(!is.null(event_data("plotly_click"))) {
         landmine_r() |> select(-date)
       } else {
-        landmine |> select(-topic) |> select(-date) |> wrap_in("tweet", "IED", "mark")
+        landmine |> select(-topic) |> select(-date)
       },
       rownames=FALSE,
-      options = list(info = FALSE,
-                     fnDrawCallback = htmlwidgets::JS(
-                       'function(){HTMLWidgets.staticRender();}'
-                     ))
+      options = list(info = FALSE),
+      escape = FALSE
 
     ) # end datatable
     })
@@ -179,17 +196,7 @@ server <- function(input, output, session) {
   #           easyClose = TRUE))
   # })
   
-  # Word formatting ----------------------------------------------------
-  wrap_in <- function(.df, column, word, tag){
-    class<-""
-    if(grepl("\\.", tag)) {
-      class <- sub(".+?\\.(.+)", " class='\\1'", tag)
-      tag <- sub("\\..+", "", tag)
-    }
-    .df[[column]] <-  gsub(sprintf("\\b(%s)\\b", paste0(word,collapse="|")), sprintf("<%1$s%2$s>\\1</%1$s>", tag, class), .df[[column]])
-    .df
-  }
-  
+
 
 }
 
