@@ -1,5 +1,7 @@
 library(shiny)
-library(tidyverse)
+library(dplyr)
+library(readr)
+library(magrittr)
 library(janitor)
 library(plotly)
 library(DT)
@@ -8,6 +10,7 @@ library(textdata)
 library(lubridate)
 library(WikipediR)
 library(purrr)
+library(stringr)
 
 # Word formatting ----------------------------------------------------
 wrap_in <- function(.df, column, word, tag){
