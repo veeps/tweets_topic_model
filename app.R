@@ -11,7 +11,8 @@ library(lubridate)
 
 landmine <- read_csv("landmine_tweets.csv") |>
   select(date, handle, tweet, query_term) |>
-  rename(topic = query_term)
+  rename(topic = query_term) |>
+  htmlwidgets::prependContent(htmltools::tags$style("mark {font-weight: 700; background-color: yellow}"))
 
 # read afinn words
 afinn <- readr::read_csv("./data/afinn.csv")
@@ -80,7 +81,7 @@ server <- function(input, output, session) {
   
   # connect click event to original landmine tweets df
   landmine_r <- reactive({
-    landmine |> filter (topic == select_topic() & date == event_data("plotly_click")$x) |> select(-topic)
+    landmine |> filter (topic == select_topic() & date == event_data("plotly_click")$x) |> select(-topic) 
     
   })
   
@@ -90,10 +91,13 @@ server <- function(input, output, session) {
       if(!is.null(event_data("plotly_click"))) {
         landmine_r() |> select(-date)
       } else {
-        landmine |> select(-topic) |> select(-date)
+        landmine |> select(-topic) |> select(-date) |> wrap_in("tweet", "IED", "mark")
       },
       rownames=FALSE,
-      options = list(info = FALSE)
+      options = list(info = FALSE,
+                     fnDrawCallback = htmlwidgets::JS(
+                       'function(){HTMLWidgets.staticRender();}'
+                     ))
 
     ) # end datatable
     })
@@ -174,6 +178,17 @@ server <- function(input, output, session) {
   #     tags$iframe(src = "https://google.com"),
   #           easyClose = TRUE))
   # })
+  
+  # Word formatting ----------------------------------------------------
+  wrap_in <- function(.df, column, word, tag){
+    class<-""
+    if(grepl("\\.", tag)) {
+      class <- sub(".+?\\.(.+)", " class='\\1'", tag)
+      tag <- sub("\\..+", "", tag)
+    }
+    .df[[column]] <-  gsub(sprintf("\\b(%s)\\b", paste0(word,collapse="|")), sprintf("<%1$s%2$s>\\1</%1$s>", tag, class), .df[[column]])
+    .df
+  }
   
 
 }
