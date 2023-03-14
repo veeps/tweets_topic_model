@@ -22,15 +22,17 @@ wrap_in <- function(.df, column, word, tag){
 
 # Read in data ------------------------------------------------
 
-landmine <- read_csv("landmine_tweets.csv") |>
-  select(date, handle, tweet, query_term) |>
-  rename(topic = query_term) |> 
+df <- read_csv("landmine_tweets_eng_processed.csv") |>
+  bind_rows(read_csv("landmine_tweets_non_eng_processed.csv"))|>
+  select(date, handle, tweet, query_term, id) |>
+  rename(topic = query_term, document_id = id) |>
   htmlwidgets::prependContent(htmltools::tags$style("mark {font-weight: 700; background-color: yellow}"))  |> wrap_in("tweet", "IED", "mark")
 
 
-#ner <- read_csv("landmine_tweets_ner_results_non_eng_clean.csv") |> bind_rows(read_csv("landmine_tweets_ner_results_eng_clean.csv"))
+ner <- read_csv("landmine_tweets_ner_results_non_eng_clean.csv") |> bind_rows(read_csv("landmine_tweets_ner_results_eng_clean.csv")) |>
+  rename( tweet = sentence_text)
 
-#landmine <- left_join(ner, df, by = c("document_id", "sentence_text"))
+landmine <- left_join(ner, df, by = c("document_id", "tweet"))
 
 
 
@@ -109,9 +111,9 @@ server <- function(input, output, session) {
   output$landmine_tweets <- DT::renderDataTable({
     DT::datatable(
       if(!is.null(event_data("plotly_click"))) {
-        landmine_r() |> select(-date)
+        landmine_r() |> select(handle, tweet)
       } else {
-        landmine |> select(-topic) |> select(-date)
+        landmine |> select(date, handle, tweet)
       },
       rownames=FALSE,
       options = list(info = FALSE),
