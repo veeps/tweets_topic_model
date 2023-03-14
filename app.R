@@ -6,6 +6,7 @@ library(DT)
 library(tidytext)
 library(textdata)
 library(lubridate)
+library(WikipediR)
 
 # Word formatting ----------------------------------------------------
 wrap_in <- function(.df, column, word, tag){
@@ -148,6 +149,7 @@ server <- function(input, output, session) {
       words() |> select (word) |> mutate(link = google_this(words()$word)),
       rownames = FALSE,
       escape = FALSE,
+      selection = "single",
       options = list(searching = FALSE, paging = FALSE, sort = FALSE, info = FALSE,
                      columnDefs = list(list(className = 'dt-center', targets = '_all')),
                      headerCallback = JS(
@@ -155,6 +157,17 @@ server <- function(input, output, session) {
                        "  $(thead).remove();",
                        "}")))
     })
+  
+  #output$word <- renderText({words()$word[input$top_words_rows_selected]})
+  
+  
+  # # add observe event for row click
+  observeEvent(input$top_words_rows_selected, {
+    word <- words()$word[input$top_words_rows_selected] 
+    showModal(modalDialog(
+      HTML(unlist(page_content("en", "wikipedia", page_name = word))),
+            easyClose = TRUE))
+  })
   
   # create custom gradient palette 
   colors <-colorRampPalette(c("#30cbcf", "#7cd8c9", "#b4e3c5"))
@@ -187,15 +200,9 @@ server <- function(input, output, session) {
   google_this <- function(search_term) {
     sprintf('<a href="https://www.google.com/search?q=%s" target="_blank" class="btn btn-xs">google this</a>',search_term)
   }
+
   
-  # # add observe event for row click
-  # observeEvent(input$top_words_rows_selected, {
-  #   showModal(modalDialog(
-  #     h3("Here's what this term means"),
-  #     tags$iframe(src = "https://google.com"),
-  #           easyClose = TRUE))
-  # })
-  
+
 
 
 }
