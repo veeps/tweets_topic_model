@@ -23,6 +23,21 @@ wrap_in <- function(.df, column, word, tag){
   .df
 }
 
+# Google search -----------------------------------------------------
+
+google_this <- function(search_term) {
+  sprintf('<a href="https://www.google.com/search?q=%s" target="_blank" class="btn btn-xs">google this</a>',search_term)
+}
+
+translate_this <- function(search_term) {
+  sprintf('<a href="https://translate.google.com/?sl=auto&tl=en&text=%s" target="_blank" class="btn btn-xs">translate</a>',search_term)
+}
+
+
+click_button <- function(tweet) {
+  paste0("window.open('https://translate.google.com/?sl=auto&tl=en&text=",tweet, "', '_blank')")
+}
+
 
 # Read in data ------------------------------------------------
 
@@ -41,7 +56,7 @@ landmine <- left_join(ner, df, by = c("document_id", "tweet"))
 
 
 # read afinn words
-afinn <- readr::read_csv("./data/afinn.csv")
+#afinn <- readr::read_csv("./data/afinn.csv")
 
 # UI ----------------------------------------------------------
 
@@ -56,7 +71,10 @@ ui <- fluidPage(
   fluidRow(style="padding:40px; background:	#c0deed; color: #000000",
            column(6,div(
                   h4("Here's a common theme on what happened on that day (click on point in chart above)"),
-                  h4(style="padding:20px; background: #ffffff; color:#000000;",textOutput("common_tweet1"))
+                  h4(style="padding:20px; background: #ffffff; color:#000000;",textOutput("common_tweet1")),
+                  actionButton("translate",
+                               style='padding:6px; font-size:90%; background: #8ddcfc; color: #000000; border: 0',
+                               label="Translate Tweet" )
            )),
            column(6,div(
                   h4("Here are the most common words that appeared in the tweets (click on row to google the term)"),
@@ -74,6 +92,12 @@ ui <- fluidPage(
 
 
 server <- function(input, output, session) {
+  
+  observeEvent(input$translate, {
+    req(input$translate)
+    click_button(common()[1,1] |> pull(ngram))
+  }
+               )
   
   # create summary table
   summary <- landmine |>
@@ -162,7 +186,8 @@ server <- function(input, output, session) {
   output$top_words <- DT::renderDataTable({
     req(event_data("plotly_click"))
     datatable(
-      words() |> mutate(link = google_this(search_text)) |> select(tagged_text, link),
+      words() |> mutate(link = google_this(search_text),
+                        translate = translate_this(search_text)) |> select(tagged_text, link, translate),
       rownames = FALSE,
       escape = FALSE,
       selection = "single",
@@ -216,13 +241,8 @@ server <- function(input, output, session) {
   output$common_tweet1 <- renderText({req(event_data("plotly_click"))
     common()[1,1] |> pull(ngram)})
   
-  # Google search -----------------------------------------------------
   
-  google_this <- function(search_term) {
-    sprintf('<a href="https://www.google.com/search?q=%s" target="_blank" class="btn btn-xs">google this</a>',search_term)
-  }
 
-  
 
 
 
