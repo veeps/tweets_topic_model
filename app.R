@@ -34,10 +34,6 @@ translate_this <- function(search_term) {
 }
 
 
-click_button <- function(tweet) {
-  paste0("window.open('https://translate.google.com/?sl=auto&tl=en&text=",tweet, "', '_blank')")
-}
-
 
 # Read in data ------------------------------------------------
 
