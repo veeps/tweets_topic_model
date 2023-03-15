@@ -72,12 +72,10 @@ ui <- fluidPage(
            column(6,div(
                   h4("Here's a common theme on what happened on that day (click on point in chart above)"),
                   h4(style="padding:20px; background: #ffffff; color:#000000;",textOutput("common_tweet1")),
-                  actionButton("translate",
-                               style='padding:6px; font-size:90%; background: #8ddcfc; color: #000000; border: 0',
-                               label="Translate Tweet" )
+                  uiOutput("translate_button")
            )),
            column(6,div(
-                  h4("Here are the most common words that appeared in the tweets (click on row to google the term)"),
+                  h4("Common names, places, and orgs that appeared in these tweets (click on row to google the term)"),
                   DTOutput("top_words")
                   ))
           ), #end fluidRow
@@ -93,11 +91,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session) {
   
-  observeEvent(input$translate, {
-    req(input$translate)
-    click_button(common()[1,1] |> pull(ngram))
-  }
-               )
+
   
   # create summary table
   summary <- landmine |>
@@ -218,16 +212,6 @@ server <- function(input, output, session) {
   # create custom gradient palette 
   colors <-colorRampPalette(c("#30cbcf", "#7cd8c9", "#b4e3c5"))
   
-  # plot for most common words
-  # output$plot_words <- renderPlot({
-  #   req(event_data("plotly_click"))
-  #   ggplot(words(), aes(x=word, y = n, fill = word)) + geom_bar(stat="identity", show.legend = F) + 
-  #     scale_fill_manual(values = colors(10)) + 
-  #     theme(plot.title = element_text(hjust = 0.5, size=18)) +
-  #     ylab("Number of Times Words Appeared") +
-  #     ggtitle("Most Common Words") + 
-  #     coord_flip()
-  # })
   
   # find the most common tweets to see what's happening that day
   common <-  reactive({
@@ -240,6 +224,19 @@ server <- function(input, output, session) {
   #get text of common tweet
   output$common_tweet1 <- renderText({req(event_data("plotly_click"))
     common()[1,1] |> pull(ngram)})
+  
+  # create render button
+  output$translate_button <- renderUI({
+    req(event_data("plotly_click"))
+    shiny::a(
+      h4(icon(class = "font-awesome", name = "globe"),
+         "Translate",
+         class = "btn btn-default action-button",
+         style = "fontweight:800; background: #0084b4; color:#ffffff; border: 0px; border-radius: 0px"),
+      target = "_blank",
+      href = paste0("https://translate.google.com/?sl=auto&tl=en&text=",common()[1,1] |> pull(ngram))
+    )
+  })
   
   
 
