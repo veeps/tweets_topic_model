@@ -1,0 +1,1 @@
+install.packages(c("shiny", "plotly",  "magrittr", "dplyr", "readr", "janitor", "DT", "tidytext",  "lubridate", "WikipediR", "purrr", "stringr"), repos="https://packagemanager.rstudio.com/cran/latest")
