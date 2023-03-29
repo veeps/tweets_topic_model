@@ -57,7 +57,8 @@ df <- read_csv("main.csv") |>
 ner <- read_csv("ner_tagged_landmine_tweets.csv") |>
   rename( tweet = sentence_text)
 
-landmine <- left_join(ner, df, by = c("document_id", "tweet"))
+landmine <- left_join(ner, df, by = c("document_id", "tweet")) |>
+  filter(!grepl('scooby doo', tagged_text))
 
 
 
