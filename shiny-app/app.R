@@ -10,6 +10,7 @@ library(lubridate)
 library(WikipediR)
 library(purrr)
 library(stringr)
+library(duckdb)
 
 # Automatically defined env docker build
 if (Sys.getenv("DOCKER_RUNNING") == "true"){
@@ -45,20 +46,45 @@ translate_this <- function(search_term) {
 }
 
 
+# Twitter URL  -----------------------------------------------------
+
+get_tweet <- function(id) {
+  sprintf('<a href="https://twitter.com/anon/status/%s" target="_blank" class="btn btn-xs">see tweet</a>',id)
+}
+
+
 
 # Read in data ------------------------------------------------
 
-df <- read_csv("main.csv") |>
+# to start an in-memory database
+con = dbConnect(duckdb::duckdb(), dbdir=":memory:")
+
+dbExecute(con,
+          "
+          CREATE OR REPLACE TABLE main AS
+          SELECT *
+          FROM read_csv_auto('./main.csv', header = TRUE)
+          ")
+
+dbExecute(con,
+          "
+          CREATE OR REPLACE TABLE ner_tagged_landmine_tweet AS
+          SELECT *
+          FROM read_csv_auto('./ner_tagged_landmine_tweets.csv', header = TRUE)
+          ")
+
+df <- dbGetQuery(con, paste0("SELECT * FROM main")) |>
   select(date, handle, tweet, query_term, id) |>
   rename(topic = query_term, document_id = id) |>
   htmlwidgets::prependContent(htmltools::tags$style("mark {font-weight: 700; background-color: yellow}"))  #|> wrap_in("tweet", "IED", "mark")
 
 
-ner <- read_csv("ner_tagged_landmine_tweets.csv") |>
+ner <- dbGetQuery(con, paste0("SELECT * FROM ner_tagged_landmine_tweet"))  |>
   rename( tweet = sentence_text)
 
 landmine <- left_join(ner, df, by = c("document_id", "tweet")) |>
-  filter(!grepl('scooby doo', tagged_text))
+  filter(!grepl('scooby doo', tagged_text))  |>
+  distinct(handle, tweet, .keep_all = T)
 
 
 
@@ -140,16 +166,18 @@ server <- function(input, output, session) {
   output$landmine_tweets <- DT::renderDataTable({
     DT::datatable(
       if(!is.null(event_data("plotly_click"))) {
-        landmine_r() |> select(handle, tweet) |> distinct()
+        landmine_r()  |> 
+          mutate(link = get_tweet(document_id)) |> select(handle, tweet, link)
       } else {
-        landmine |> select(date, handle, tweet) |> distinct()
+        landmine  |> 
+          mutate(link = get_tweet(document_id)) |> select(handle, tweet, link)
       },
       rownames=FALSE,
       options = list(info = FALSE),
       escape = FALSE
-
+      
     ) # end datatable
-    })
+  })
   
   # date selected
   output$date <- renderText({
@@ -230,7 +258,7 @@ server <- function(input, output, session) {
   
   #get text of common tweet
   output$common_tweet1 <- renderText({req(event_data("plotly_click"))
-    common()[1,1] |> pull(ngram)})
+    common()[1,1] })
   
   # create render button
   output$translate_button <- renderUI({
@@ -241,7 +269,7 @@ server <- function(input, output, session) {
          class = "btn btn-default action-button",
          style = "fontweight:800; background: #0084b4; color:#ffffff; border: 0px; border-radius: 0px"),
       target = "_blank",
-      href = paste0("https://translate.google.com/?sl=auto&tl=en&text=",common()[1,1] |> pull(ngram))
+      href = paste0("https://translate.google.com/?sl=auto&tl=en&text=",common()[1,1])
     )
   })
   
