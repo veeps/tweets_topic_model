@@ -20,15 +20,15 @@ RUN sudo ./aws/install
 # Try to only install system libraries you actually need
 # Package Manager is a good resource to help discover system deps
 RUN apt-get update && \
- apt-get install -y libgeos-dev libproj-dev libgdal-dev libudunits2-dev git cron
+ apt-get install -y libgeos-dev libproj-dev libgdal-dev libudunits2-dev git
 
 # cron setup
-RUN /etc/init.d/cron start
-COPY get-s3-dynamics.sh /bin/
-RUN chmod +x /bin/get-s3-dynamics.sh
-COPY get-s3-dynamics.cron /etc/cron.d/get-s3-dynamics
-RUN chmod 0644 /etc/cron.d/get-s3-dynamics
-RUN crontab /etc/cron.d/get-s3-dynamics
+# RUN /etc/init.d/cron start
+# COPY get-s3-dynamics.sh /bin/
+# RUN chmod +x /bin/get-s3-dynamics.sh
+# COPY get-s3-dynamics.cron /etc/cron.d/get-s3-dynamics
+# RUN chmod 0644 /etc/cron.d/get-s3-dynamics
+# RUN crontab /etc/cron.d/get-s3-dynamics
 
 # install packages
 COPY dependencies.R ./

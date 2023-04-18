@@ -13,15 +13,15 @@ library(stringr)
 library(duckdb)
 
 # Automatically defined env docker build
-if (Sys.getenv("DOCKER_RUNNING") == "true"){
-  
-  system("/bin/get-s3-dynamics.sh") 
-} else{
-  
-  # Assumes working dir is dashboard/shiny-app
-  #here::i_am("dashboard/shiny-app/global.R")
-  system("bash ../get-s3-dynamics.sh")
-}
+# if (Sys.getenv("DOCKER_RUNNING") == "true"){
+#   
+#   system("/bin/get-s3-dynamics.sh") 
+# } else{
+#   
+#   # Assumes working dir is dashboard/shiny-app
+#   #here::i_am("dashboard/shiny-app/global.R")
+#   system("bash ../get-s3-dynamics.sh")
+# }
 
 
 # Word formatting ----------------------------------------------------
@@ -57,34 +57,22 @@ get_tweet <- function(id) {
 # Read in data ------------------------------------------------
 
 # to start an in-memory database
-con = dbConnect(duckdb::duckdb(), dbdir=":memory:")
+# con = dbConnect(duckdb::duckdb(), dbdir=":memory:")
+# 
+# dbExecute(con,
+#           "
+#           CREATE OR REPLACE TABLE main AS
+#           SELECT *
+#           FROM read_csv_auto('./main.csv', header = TRUE)
+#           ")
+# 
+# dbExecute(con,
+#           "
+#           CREATE OR REPLACE TABLE ner_tagged_landmine_tweet AS
+#           SELECT *
+#           FROM read_csv_auto('./ner_tagged_landmine_tweets.csv', header = TRUE)
+#           ")
 
-dbExecute(con,
-          "
-          CREATE OR REPLACE TABLE main AS
-          SELECT *
-          FROM read_csv_auto('./main.csv', header = TRUE)
-          ")
-
-dbExecute(con,
-          "
-          CREATE OR REPLACE TABLE ner_tagged_landmine_tweet AS
-          SELECT *
-          FROM read_csv_auto('./ner_tagged_landmine_tweets.csv', header = TRUE)
-          ")
-
-df <- dbGetQuery(con, paste0("SELECT * FROM main")) |>
-  select(date, handle, tweet, query_term, id) |>
-  rename(topic = query_term, document_id = id) |>
-  htmlwidgets::prependContent(htmltools::tags$style("mark {font-weight: 700; background-color: yellow}"))  #|> wrap_in("tweet", "IED", "mark")
-
-
-ner <- dbGetQuery(con, paste0("SELECT * FROM ner_tagged_landmine_tweet"))  |>
-  rename( tweet = sentence_text)
-
-landmine <- left_join(ner, df, by = c("document_id", "tweet")) |>
-  filter(!grepl('scooby doo', tagged_text))  |>
-  distinct(handle, tweet, .keep_all = T)
 
 
 
@@ -123,7 +111,26 @@ ui <- fluidPage(
 
 
 server <- function(input, output, session) {
+  # cache busting mechanism for URLs
+  timestamp <- as.numeric(Sys.time())
   
+  url_fx <- function(url) {
+    paste0(url, "?v=", timestamp)
+  }
+  
+  
+  df <- read_csv(url_fx("https://rfds-ds-twitter.s3.amazonaws.com/main.csv")) |>
+    select(date, handle, tweet, query_term, id) |>
+    rename(topic = query_term, document_id = id) |>
+    htmlwidgets::prependContent(htmltools::tags$style("mark {font-weight: 700; background-color: yellow}"))  #|> wrap_in("tweet", "IED", "mark")
+  
+  
+  ner <- read_csv(url_fx("https://rfds-ds-twitter.s3.amazonaws.com/ner_tagged_landmine_tweets.csv")) |>
+    rename( tweet = sentence_text)
+  
+  landmine <- left_join(ner, df, by = c("document_id", "tweet"), relationship = "many-to-many") |>
+    filter(!grepl('scooby doo', tagged_text)) |>
+    mutate(date = as.Date(date))
 
   
   # create summary table
@@ -258,7 +265,7 @@ server <- function(input, output, session) {
   
   #get text of common tweet
   output$common_tweet1 <- renderText({req(event_data("plotly_click"))
-    common()[1,1] })
+    common()[1,1]  |> pull(ngram)})
   
   # create render button
   output$translate_button <- renderUI({
@@ -269,7 +276,7 @@ server <- function(input, output, session) {
          class = "btn btn-default action-button",
          style = "fontweight:800; background: #0084b4; color:#ffffff; border: 0px; border-radius: 0px"),
       target = "_blank",
-      href = paste0("https://translate.google.com/?sl=auto&tl=en&text=",common()[1,1])
+      href = paste0("https://translate.google.com/?sl=auto&tl=en&text=",common()[1,1]  |> pull(ngram))
     )
   })
   
